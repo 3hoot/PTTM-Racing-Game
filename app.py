@@ -1,5 +1,4 @@
-import logic
-import gui
+from src import gui, logic
 
 
 def main():
