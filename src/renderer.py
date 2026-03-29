@@ -26,7 +26,7 @@ class GameRenderer:
 
         # Load base car image and create initial texture
         base_image = Image.open(textures_dir / "car_1.png").resize(
-            (const.GAME_SCALE_FACTOR, const.GAME_SCALE_FACTOR),
+            (const.RENDER_TEXTURE_FACTOR, const.RENDER_TEXTURE_FACTOR),
             Image.Resampling.NEAREST,
         )
         self._base_car_image = base_image

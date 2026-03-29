@@ -4,10 +4,10 @@ GAME_TITLE: str = "Pedal To The Metal - Racing Game"
 GAME_WINDOW_SIZE_X: int = 1600
 GAME_WINDOW_SIZE_Y: int = 1800
 GAME_FPS: int = 30
-GAME_SCALE_FACTOR: int = 100
 
 # Render transform controls (screen-space only)
 RENDER_POSITION_SCALE: float = 30.0
+RENDER_TEXTURE_FACTOR: int = 100
 RENDER_OFFSET_X: float = 0.0
 RENDER_OFFSET_Y: float = float(GAME_WINDOW_SIZE_Y)
 RENDER_INVERT_Y: bool = True
@@ -29,8 +29,8 @@ DEFAULT_MAX_STEER_ANGLE: float = 50.0
 
 # --- World physics related constants ---
 WORLD_GRAVITY: float = 9.81
-DEFAULT_AIR_RESISTANCE_COEFF: float = 0.6  # Aerodynamic drag coefficient
-DEFAULT_ROLLING_RESISTANCE_COEFF: float = 0.02  # Rolling resistance coefficient
+DEFAULT_AIR_RESISTANCE_COEFF: float = 0.3  # Aerodynamic drag coefficient
+DEFAULT_ROLLING_RESISTANCE_COEFF: float = 0.01  # Rolling resistance coefficient
 
 # --- Calculation related constants ---
 # [m/s], below this we consider the car stopped
