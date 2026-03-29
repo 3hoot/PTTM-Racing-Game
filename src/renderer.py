@@ -51,11 +51,18 @@ class GameRenderer:
         self.canvas.grid_remove()
 
     def render(self, state: RenderState) -> None:
-        angle_key = int(round(state.angle_deg)) % 360
+        draw_angle = state.angle_deg
+        if const.RENDER_INVERT_Y:
+            # Y-axis inversion flips handedness, so mirror angle for display.
+            draw_angle = -draw_angle
+        draw_angle += const.RENDER_ANGLE_OFFSET_DEG
+
+        angle_key = int(round(draw_angle)) % 360
         texture = self._get_or_create_texture(angle_key)
 
         screen_x = state.x * const.RENDER_POSITION_SCALE + const.RENDER_OFFSET_X
-        screen_y = state.y * const.RENDER_POSITION_SCALE + const.RENDER_OFFSET_Y
+        screen_y_world = -state.y if const.RENDER_INVERT_Y else state.y
+        screen_y = screen_y_world * const.RENDER_POSITION_SCALE + const.RENDER_OFFSET_Y
 
         self.canvas.coords(self._car_item_id, screen_x, screen_y)
         self.canvas.itemconfig(self._car_item_id, image=texture)
@@ -66,7 +73,7 @@ class GameRenderer:
             return texture
 
         rotated = self._base_car_image.rotate(
-            -angle_key,
+            - angle_key,
             resample=Image.Resampling.NEAREST,
             expand=True,
         )

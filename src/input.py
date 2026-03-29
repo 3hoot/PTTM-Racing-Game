@@ -52,10 +52,7 @@ class InputController:
     def _on_left_press(self, _event: tk.Event) -> None:
         if self._can_process_input():
             assert self._logic is not None
-            while True:
-                self._logic.input(
-                    "steer", -1.0 * const.DEFAULT_STEER_MULTIPLIER)
-                break
+            self._logic.input("steer", 1.0)
 
     def _on_left_release(self, _event: tk.Event) -> None:
         if self._can_process_input():
@@ -65,10 +62,7 @@ class InputController:
     def _on_right_press(self, _event: tk.Event) -> None:
         if self._can_process_input():
             assert self._logic is not None
-            while True:
-                self._logic.input(
-                    "steer", 1.0 * const.DEFAULT_STEER_MULTIPLIER)
-                break
+            self._logic.input("steer", -1.0)
 
     def _on_right_release(self, _event: tk.Event) -> None:
         if self._can_process_input():

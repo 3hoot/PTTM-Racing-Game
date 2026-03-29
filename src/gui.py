@@ -95,14 +95,9 @@ class Game:
             return
 
         player = self.logic.player
-
-        # transform game world coordinates to screen coordinates and render
-        screen_x = player.position.x * const.RENDER_POSITION_SCALE + const.RENDER_OFFSET_X
-        screen_y = - player.position.y * const.RENDER_POSITION_SCALE + const.RENDER_OFFSET_Y
-
         state = RenderState(
-            x=screen_x,
-            y=screen_y,
+            x=player.position.x,
+            y=player.position.y,
             angle_deg=player.rotation,
         )
         self.renderer.render(state)

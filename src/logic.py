@@ -161,9 +161,6 @@ class CarEntity:
         weight_front = max(weight_front, 0.0)
         weight_rear = max(weight_rear, 0.0)
 
-        # Centering steering
-        self.steer_angle *= (1 - const.DEFAULT_STEER_CENTERING_COEFF)
-
         # --- Lateral forces calculations ---
         # Calculate Slip Angles
         # Front slip = atan(lat_vel + angular_vel * dist_to_front / long_vel) - steer_angle
@@ -265,8 +262,7 @@ class CarEntity:
     def setBrake(self, amount: float) -> None:
         self.brake = np.clip(amount, 0.0, 1.0)
 
-    def setSteer(self, angle: float) -> None:
-        self.steer_angle = np.clip(
-            self.steer_angle + angle,
-            -const.DEFAULT_MAX_STEER_ANGLE,
-            const.DEFAULT_MAX_STEER_ANGLE)
+    def setSteer(self, steer_input: float) -> None:
+        # steer_input is expected in [-1, 1]. Map it directly to wheel angle.
+        steer_input = np.clip(steer_input, -1.0, 1.0)
+        self.steer_angle = steer_input * const.DEFAULT_MAX_STEER_ANGLE
