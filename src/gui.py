@@ -32,16 +32,19 @@ class Game:
         self.logic: Optional[LogicActions] = None
         self._in_gameplay_view = False
 
-        # Load textures and create renderer
-        project_root = Path(__file__).resolve().parent.parent
-        textures_dir = project_root / "textures"
-        self.renderer = GameRenderer(self.frame, textures_dir)
-        self.renderer.hide()  # Menu will be shown first
-
         # Create menu and input controller
         self.menu = MenuView(self.frame, on_start=self._on_start_game)
         self.input = InputController()
         self.input.bind(self.root)
+
+        # Load textures and create renderer
+        project_root = Path(__file__).resolve().parent.parent
+        textures_dir = project_root / "textures"
+        texture_file = self.menu.selected_texture
+        print("GUI texture_file =", texture_file)
+        self.renderer = GameRenderer(self.frame, textures_dir, texture_file)
+        self.renderer.hide()  # Menu will be shown first
+
 
     def second_window(self) -> None:
         self.new_win = tk.Toplevel(self.root)
@@ -66,6 +69,11 @@ class Game:
         self.menu.set_status(message)
 
     def _on_start_game(self) -> None:
+        self.renderer.selected_texture = self.menu.selected_texture
+        self.renderer.draw_background()
+        self.menu.hide()
+        self.renderer.show()
+        
         if self.logic is None:
             return
         self.logic.start()

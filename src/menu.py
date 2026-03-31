@@ -10,6 +10,7 @@ class MenuView:
         self.master = master
         self.frame = tk.Frame(master, width=300, height=220)
         self.frame.grid(row=0, column=0)
+        self.selected_texture = None
 
         self.title_label = tk.Label(
             self.frame,
@@ -55,11 +56,16 @@ class MenuView:
         self.status_label.configure(text=message)
         
     def open_second_window(self) -> None:
-        #self.start_button.configure(state="disabled")
-        self.second_window = SecondWindow(self.master)
+        self.second_window = SecondWindow(self.master, self)
+        
+    def set_texture(self,texture_file:str) -> None:
+        self.selected_texture = texture_file
+        #self.start_button.configure(state="normal")
+        self.set_status(f"Selected texture: {texture_file}")
 
 class SecondWindow:
-    def __init__(self, master:tk.Widget) -> None:
+    def __init__(self, master:tk.Widget, menu) -> None:
+        self.menu = menu
         self.window = tk.Toplevel(master)
         self.window.title("Choose texture")
         self.window.geometry("400x200")
@@ -82,6 +88,7 @@ class SecondWindow:
             self.frame,
             text="Road 1",
             width=10,
+            command= lambda: self.choose_texture("road_1.png"),
         )
         self.button1.grid(row=1, column=0, padx=4, pady=(4,4))
         
@@ -93,6 +100,7 @@ class SecondWindow:
             self.frame,
             text="Road 2",
             width=10,
+            command= lambda: self.choose_texture("road_2.png"),
         )
         self.button2.grid(row=1, column=1, padx=4, pady=(4, 4))
 
@@ -104,6 +112,7 @@ class SecondWindow:
             self.frame,
             text="Sand",
             width=10,
+            command= lambda: self.choose_texture("sand_1.png"),
         )
         self.button3.grid(row=1, column=2, padx=4, pady=(4, 4))
         
@@ -116,6 +125,7 @@ class SecondWindow:
             self.frame,
             text="Grass 1",
             width=10,
+            command= lambda: self.choose_texture("grass_1.png"),
         )
         self.button4.grid(row=3, column=0, padx=4, pady=(4, 4))
         
@@ -128,6 +138,7 @@ class SecondWindow:
             self.frame,
             text="Grass 2",
             width=10,
+            command= lambda: self.choose_texture("grass_2.png"),
         )
         self.button5.grid(row=3, column=1, padx=4, pady=(4, 4))
         
@@ -139,6 +150,7 @@ class SecondWindow:
             self.frame,
             text="Grass 3",
             width=10,
+            command= lambda: self.choose_texture("grass_3.png"),
         )
         self.button6.grid(row=3, column=2, padx=4, pady=(4, 4))
         
@@ -153,6 +165,8 @@ class SecondWindow:
     def hide(self) -> None:
         self.window.grid_remove()
 
-    def set_status(self, message: str) -> None:
-        self.status_label.configure(text=message)
+    def choose_texture(self, texture_file: str) -> None:
+        self.menu = self.menu
+        self.menu.set_texture(texture_file)
+        self.window.destroy()
         

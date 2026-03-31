@@ -4,6 +4,7 @@ from pathlib import Path
 import tkinter as tk
 from PIL import Image, ImageTk
 
+from .menu import MenuView, SecondWindow
 from . import consts as const
 
 
@@ -15,7 +16,9 @@ class RenderState:
 
 
 class GameRenderer:
-    def __init__(self, master: tk.Widget, textures_dir: Path) -> None:
+    def __init__(self, master: tk.Widget, textures_dir: Path, texture_file: str) -> None:
+        self.selected_texture = texture_file
+        
         self.canvas = tk.Canvas(
             master,
             width=const.GAME_WINDOW_SIZE_X,
@@ -24,6 +27,9 @@ class GameRenderer:
             bg="#111111",
         )
 
+        if self.selected_texture is not None:
+            self.draw_background
+        
         # Load base car image and create initial texture
         base_image = Image.open(textures_dir / "car_1.png").resize(
             (const.RENDER_TEXTURE_FACTOR, const.RENDER_TEXTURE_FACTOR),
@@ -43,6 +49,33 @@ class GameRenderer:
 
         self._car_item_id = self.canvas.create_image(
             initial_x, initial_y, image=self._car_textures[0])
+
+    def draw_background(self) -> None:
+        if self.selected_texture is None:
+            return
+        
+        base_dir = Path(__file__).resolve().parent.parent
+        textures_dir = base_dir.joinpath('textures')
+        background_image = Image.open(textures_dir / self.selected_texture)
+        self.background_tile = ImageTk.PhotoImage(background_image)
+        
+        img_width = 16
+        img_height = 16
+        width=const.GAME_WINDOW_SIZE_X
+        height=const.GAME_WINDOW_SIZE_Y
+        
+        self.canvas.delete("background")
+        
+        for y in range(0, height, img_height):
+            for x in range(0, width, img_width):
+                self.canvas.create_image(
+                    x,
+                    y,
+                    image = self.background_tile,
+                    anchor = "nw",
+                    tags = "background"
+                )
+        
 
     def show(self) -> None:
         self.canvas.grid(row=0, column=0, sticky="nsew")
