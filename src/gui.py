@@ -6,7 +6,7 @@ import tkinter as tk
 from . import consts as const
 from .actions import LogicActions
 from .input import InputController
-from .menu import MenuView
+from .menu import MenuView, SecondWindow
 from .renderer import GameRenderer, RenderState
 
 
@@ -43,6 +43,11 @@ class Game:
         self.input = InputController()
         self.input.bind(self.root)
 
+    def second_window(self) -> None:
+        self.new_win = tk.Toplevel(self.root)
+        self.new_win.geometry('300x300')
+        self.second_menu = SecondWindow(self.new_win)
+        
     def set_logic(self, logic: LogicActions) -> None:
         self.logic = logic
         self.input.set_logic(logic)

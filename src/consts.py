@@ -1,8 +1,8 @@
 
 # --- GUI related constants ---
 GAME_TITLE: str = "Pedal To The Metal - Racing Game"
-GAME_WINDOW_SIZE_X: int = 1600
-GAME_WINDOW_SIZE_Y: int = 1800
+GAME_WINDOW_SIZE_X: int = 1000
+GAME_WINDOW_SIZE_Y: int = 1000
 GAME_FPS: int = 30
 
 # Render transform controls (screen-space only)
