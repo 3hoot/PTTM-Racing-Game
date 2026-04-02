@@ -1,8 +1,8 @@
 from typing import Optional
-from dataclasses import dataclass
 from enum import Enum
 import numpy as np
 from pathlib import Path
+import copy
 
 from . import consts as const
 from . import map_reader as mp
@@ -16,7 +16,7 @@ class Game:
         self.is_running: bool = False
         self.map: Optional[mp.MapData] = None
         self.player: Optional["CarEntity"] = None
-        self.CarEntityList: list["CarEntity"] = []
+        self.entity_list: list["Entity"] = []
 
     def set_ui(self, ui: GuiActions) -> None:
         self.ui = ui
@@ -45,8 +45,8 @@ class Game:
 
         self.player = CarEntity(position=scaled_start_position)
 
-        # For future expansion to multiple cars
-        self.CarEntityList = [self.player]
+        # For future expansion to handle multiple entities (cars and tiles)
+        self.entity_list: list[Entity] = [self.player]
 
     def input(self, action: str, value: float) -> None:
         if not self.is_running:
@@ -81,7 +81,7 @@ class Game:
         print(
             f"Player accelerate: {self.player.throttle:.2f}, brake: {self.player.brake:.2f}, steer angle: {self.player.steer_angle:.2f}")
 
-        # for entity in self.CarEntityList:
+        # for entity in self.entity_list:
         #     # Determine which tile the car is on and update tire friction accordingly
         #     tile_x = int(entity.position.x // const.MAP_SCALE_FACTOR)
         #     tile_y = int(entity.position.y // const.MAP_SCALE_FACTOR)
@@ -108,8 +108,14 @@ class CarType(Enum):
     AWD = 2
 
 
-class CarEntity:
-    def __init__(self, position=None,
+class Entity:
+    def __init__(self, position: Optional[Coords], rotation: float) -> None:
+        self.position = position if position is not None else Coords(0.0, 0.0)
+        self.rotation = rotation
+
+
+class CarEntity(Entity):
+    def __init__(self, position=Coords(10.0, 10.0),
                  rotation=0.0,
                  wheelbase=const.DEFAULT_WHEELBASE,
                  mass_distribution=const.DEFAULT_MASS_DISTRIBUTION,
@@ -118,11 +124,11 @@ class CarEntity:
                  inertia=const.DEFAULT_INERTIA,
                  tire_friction_coeff=const.DEFAULT_TIRE_FRICTION_COEFF,
                  cornering_stiffness=const.DEFAULT_CORNERING_STIFFNESS,
-                 car_type=CarType.RWD) -> None:
+                 car_type=CarType.AWD) -> None:
+
+        super().__init__(position, rotation)
 
         # Car state
-        self.position = position if position is not None else Coords(0.0, 0.0)
-        self.rotation = rotation
         self.wheelbase = wheelbase
         self.mass_distribution = mass_distribution
         self.mass_height = mass_height
@@ -137,6 +143,7 @@ class CarEntity:
         self.steer_angle = 0.0  # Degrees
         self.brake = 0.0  # 0 to 1
         self.throttle = 0.0  # 0 to 1
+        self.speed = 0.0  # Scalar speed for convenience
 
         # Physics Constants
         self.cornering_stiffness = cornering_stiffness
@@ -149,7 +156,7 @@ class CarEntity:
             dt if dt > const.MIN_VELOCITY_THRESHOLD else 0.0
 
         # Store previous velocity for next update
-        self.prev_velocity = Coords(self.velocity.x, self.velocity.y)
+        self.prev_velocity = copy.copy(self.velocity)
 
         front_weight_transfer = long_accel * self.mass * self.mass_height / self.wheelbase
         weight_front = self.mass * const.WORLD_GRAVITY * \
@@ -161,23 +168,13 @@ class CarEntity:
         weight_front = max(weight_front, 0.0)
         weight_rear = max(weight_rear, 0.0)
 
-        # --- Lateral forces calculations ---
-        # Calculate Slip Angles
-        # Front slip = atan(lat_vel + angular_vel * dist_to_front / long_vel) - steer_angle
-        if abs(self.velocity.y) > const.MIN_VELOCITY_THRESHOLD:  # Avoid division by zero
-            slip_angle_front = np.degrees(np.arctan2(self.velocity.x + self.angular_velocity * self.wheelbase * (1-self.mass_distribution),
-                                                     abs(self.velocity.y))) - self.steer_angle
-            slip_angle_rear = np.degrees(np.arctan2(self.velocity.x - self.angular_velocity * self.wheelbase * self.mass_distribution,
-                                                    abs(self.velocity.y)))
-        else:
-            slip_angle_front = slip_angle_rear = 0.0
+        # Input forces
+        accel_force = self.throttle * const.DEFAULT_ACCEL_FORCE
+        brake_force = self.brake * \
+            const.DEFAULT_BRAKE_FORCE if self.velocity.y > 0.0 else 0.0
 
-        # Calculate Lateral Forces
-        # F = -stiffness * slip_angle
-        force_front_lat = -self.cornering_stiffness * slip_angle_front
-        force_rear_lat = -self.cornering_stiffness * slip_angle_rear
-
-        # --- Longitudinal forces ---
+        # Self explanatory
+        # Used for biasing acceleration
         match self.car_type:
             case CarType.RWD:
                 front_accel_force_long_coeff = 0.0
@@ -189,43 +186,55 @@ class CarEntity:
                 front_accel_force_long_coeff = 0.5
                 rear_accel_force_long_coeff = 0.5
 
-        force_front_long = \
-            self.throttle * const.DEFAULT_ACCEL_FORCE * front_accel_force_long_coeff - \
-            (self.brake * const.DEFAULT_BRAKE_FORCE if self.velocity.y > 0.0 else 0.0)
-        force_rear_long = \
-            self.throttle * const.DEFAULT_ACCEL_FORCE * rear_accel_force_long_coeff - \
-            (self.brake * const.DEFAULT_BRAKE_FORCE if self.velocity.y > 0.0 else 0.0)
+        # --- Lateral forces calculations ---
+        # Calculate Slip Angles
+        # Front slip = atan(lat_vel + angular_vel * dist_to_front / long_vel) - steer_angle
+        if abs(self.velocity.y) > const.MIN_VELOCITY_THRESHOLD:  # Avoid division by zero
+            slip_angle_front = np.degrees(np.arctan2(
+                self.velocity.x + self.angular_velocity * self.wheelbase *
+                (1-self.mass_distribution), abs(self.velocity.y))) - self.steer_angle
+            slip_angle_rear = np.degrees(np.arctan2(
+                self.velocity.x - self.angular_velocity * self.wheelbase *
+                self.mass_distribution, abs(self.velocity.y)))
+        else:
+            slip_angle_front = slip_angle_rear = 0.0
 
-        # --- Apply Friction Circle (Clamping) ---
-        max_force_front = self.tire_friction_coeff * weight_front
-        max_force_rear = self.tire_friction_coeff * weight_rear
+        # Calculate Lateral Forces
+        # F = -stiffness * slip_angle
+        force_front_lat = -self.cornering_stiffness * slip_angle_front
+        force_rear_lat = -self.cornering_stiffness * slip_angle_rear
 
-        total_force_front = np.hypot(force_front_long, force_front_lat)
-        total_force_rear = np.hypot(force_rear_long, force_rear_lat)
+        # --- Longitudinal forces ---
+        force_front_long = accel_force * front_accel_force_long_coeff - brake_force
+        force_rear_long = accel_force * rear_accel_force_long_coeff - brake_force
 
-        if total_force_front > max_force_front:
-            scale = max_force_front / total_force_front
+        # --- Friction circle calculations ---
+        # Combined tire forces per axle must stay within the friction circle.
+        friction_force_front = self.tire_friction_coeff * weight_front
+        friction_force_rear = self.tire_friction_coeff * weight_rear
+
+        input_forces_front = np.hypot(force_front_long, force_front_lat)
+        if input_forces_front > friction_force_front and input_forces_front > 0.0:
+            scale = friction_force_front / input_forces_front
             force_front_long *= scale
             force_front_lat *= scale
 
-        if total_force_rear > max_force_rear:
-            scale = max_force_rear / total_force_rear
+        input_forces_rear = np.hypot(force_rear_long, force_rear_lat)
+        if input_forces_rear > friction_force_rear and input_forces_rear > 0.0:
+            scale = friction_force_rear / input_forces_rear
             force_rear_long *= scale
             force_rear_lat *= scale
 
-        # --- Calculate Torques and Resultant Acceleration ---
-        total_force_lat = force_front_lat + force_rear_lat
+        # --- Calculate Total Forces and Resultant Acceleration ---
+        drag_force_lat = - const.DEFAULT_AIR_RESISTANCE_COEFF * self.velocity.x * \
+            abs(self.velocity.x) - const.DEFAULT_ROLLING_RESISTANCE_COEFF * \
+            self.velocity.x * self.mass
+        total_force_lat = force_front_lat + force_rear_lat + drag_force_lat
 
-        drag_force_long = -const.DEFAULT_AIR_RESISTANCE_COEFF * \
-            self.velocity.y * abs(self.velocity.y)  # air
-        resistance_force_long = -const.DEFAULT_ROLLING_RESISTANCE_COEFF * \
-            self.velocity.y * self.mass  # rolling resistance
-
-        total_force_long = force_front_long + force_rear_long + \
-            drag_force_long + resistance_force_long
-        # Torque = (Force_front * dist_to_CG) - (Force_rear * dist_to_CG)
-        torque = (force_front_lat * self.wheelbase * (1 - self.mass_distribution)
-                  ) - (force_rear_lat * self.wheelbase * self.mass_distribution)
+        drag_force_long = - const.DEFAULT_AIR_RESISTANCE_COEFF * self.velocity.y * \
+            abs(self.velocity.y) - const.DEFAULT_ROLLING_RESISTANCE_COEFF * \
+            self.velocity.y * self.mass
+        total_force_long = force_front_long + force_rear_long + drag_force_long
 
         # --- Integrate Physics ---
         # Acceleration = Force / Mass
@@ -240,11 +249,21 @@ class CarEntity:
         if self.brake > 0.0 and self.prev_velocity.y > 0.0 and self.velocity.y < 0.0:
             self.velocity.y = 0.0
 
-        # Angular Acceleration = Torque / Inertia
-        angular_accel = torque / self.inertia
-        self.angular_velocity += angular_accel * dt
+        # Calculate angular velocity based on longitudinal velocity and steering angle
+        self.speed = np.hypot(self.velocity.x, self.velocity.y)
+        if self.speed > const.MIN_VELOCITY_THRESHOLD:
+            speed_factor = 1.0 / \
+                (1.0 + const.DEFAULT_UNDERSTEER_GAIN * (self.speed**2))
+            self.angular_velocity = (
+                self.velocity.y / self.wheelbase
+            ) * np.tan(np.radians(self.steer_angle)) * speed_factor
+        else:
+            self.angular_velocity = 0.0
+
         self.rotation += np.degrees(self.angular_velocity) * dt
         self.rotation = self.rotation % 360  # Keep rotation within [0, 360)
+
+        self.velocity.x *= max(0.0, 1.0 - 4.0 * dt)
 
         # --- Convert Local Velocity to World Position ---
         rad = np.radians(self.rotation)

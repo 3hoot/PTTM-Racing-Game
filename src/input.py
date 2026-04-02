@@ -25,6 +25,8 @@ class InputController:
         widget.bind("<KeyRelease-Left>", self._on_left_release)
         widget.bind("<KeyPress-Right>", self._on_right_press)
         widget.bind("<KeyRelease-Right>", self._on_right_release)
+        widget.bind("<KeyPress-Escape>",
+                    lambda event: self._on_escape_press(event, widget))
 
     def _can_process_input(self) -> bool:
         return self._enabled and self._logic is not None and self._logic.is_running
@@ -68,3 +70,8 @@ class InputController:
         if self._can_process_input():
             assert self._logic is not None
             self._logic.input("steer", 0.0)
+
+    def _on_escape_press(self, _event: tk.Event, widget: tk.Misc) -> None:
+        if self._can_process_input():
+            assert self._logic is not None
+            widget.destroy()

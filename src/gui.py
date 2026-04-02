@@ -57,17 +57,25 @@ class Game:
         self.root.mainloop()
 
     # Method for logic to send status messages to the menu
+    # Currently unused, but can be called from logic to update the menu status label
+    # (e.g. for error messages or game over)
     def status_message(self, message: str) -> None:
         self.menu.set_status(message)
 
     def _on_start_game(self) -> None:
-        if self.logic is None:
+        if self.logic is None or self.logic.entity_list is None:
             return
         self.logic.start()
+        self.renderer.load_textures(["car_1.png"])
+
+        # Assigning textures to entities (here to allow for changing textures before game start)
+        # Placeholder binding (entity of idx 0 is the player)
+        self.RenderStates: list[RenderState] = [
+            RenderState(0.0, 0.0, 0.0, 0, self.renderer.resolve_texture_idx("car_1.png"))]
 
     def _tick(self) -> None:
         # Ensure at least 1 ms delay
-        frame_ms = max(1, int(1000 / const.GAME_FPS))
+        frame_ms = max(1, int(1000 / const.GAME_TARGET_FPS))
 
         dt = frame_ms / 1000.0  # Convert ms to seconds for logic update
 
@@ -91,13 +99,14 @@ class Game:
         self.root.after(frame_ms, self._tick)
 
     def _render_from_logic(self) -> None:
-        if self.logic is None or self.logic.player is None:
+        if self.logic is None or self.logic.entity_list is None:
             return
 
-        player = self.logic.player
-        state = RenderState(
-            x=player.position.x,
-            y=player.position.y,
-            angle_deg=player.rotation,
-        )
-        self.renderer.render(state)
+        # Update all positions and angles from logic entities
+        for state in self.RenderStates:
+            logic_entity = self.logic.entity_list[state.entity_idx]
+            state.x = logic_entity.position.x
+            state.y = logic_entity.position.y
+            state.angle_deg = logic_entity.rotation
+
+        self.renderer.render(self.RenderStates)

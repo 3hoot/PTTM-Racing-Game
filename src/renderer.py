@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import tkinter as tk
@@ -12,6 +12,34 @@ class RenderState:
     x: float
     y: float
     angle_deg: float
+    entity_idx: int
+    texture_idx: int
+
+
+class Texture:
+    """Represents a texture with cached rotated versions for efficient rendering."""
+
+    def __init__(self, name: str, base_image: Image.Image, canvas: tk.Canvas) -> None:
+        self.name = name
+        self.base = base_image
+        self.rotated: dict[int, ImageTk.PhotoImage] = {
+            0: ImageTk.PhotoImage(base_image)}
+        self.canvas_id = canvas.create_image(0, 0, image=self.rotated[0])
+
+    def get_rotated_PI(self, angle_key: int) -> ImageTk.PhotoImage:
+        """Get the cached rotated texture for the given angle key, or create it if not cached."""
+        texture = self.rotated.get(angle_key)
+        if texture is not None:
+            return texture
+
+        rotated = self.base.rotate(
+            -angle_key,
+            resample=Image.Resampling.NEAREST,
+            expand=True,
+        )
+        texture = ImageTk.PhotoImage(rotated)
+        self.rotated[angle_key] = texture
+        return texture
 
 
 class GameRenderer:
@@ -24,25 +52,13 @@ class GameRenderer:
             bg="#111111",
         )
 
-        # Load base car image and create initial texture
-        base_image = Image.open(textures_dir / "car_1.png").resize(
-            (const.RENDER_TEXTURE_FACTOR, const.RENDER_TEXTURE_FACTOR),
-            Image.Resampling.NEAREST,
-        )
-        self._base_car_image = base_image
+        if Path(textures_dir).is_file():
+            raise ValueError(
+                f"Texture path {textures_dir} is a file, expected a directory.")
+        self.texture_dir = textures_dir
 
-        # Cache for rotated car textures
-        self._car_textures: dict[int, ImageTk.PhotoImage] = {
-            0: ImageTk.PhotoImage(base_image)
-        }
-
-        # Create canvas item for the player's car (for now we only have one car)
-
-        initial_x = const.GAME_WINDOW_SIZE_X / 2
-        initial_y = const.GAME_WINDOW_SIZE_Y / 2
-
-        self._car_item_id = self.canvas.create_image(
-            initial_x, initial_y, image=self._car_textures[0])
+        # Cache for loaded textures and their rotated versions
+        self.textures: list[Texture] = []
 
     def show(self) -> None:
         self.canvas.grid(row=0, column=0, sticky="nsew")
@@ -50,33 +66,51 @@ class GameRenderer:
     def hide(self) -> None:
         self.canvas.grid_remove()
 
-    def render(self, state: RenderState) -> None:
-        draw_angle = state.angle_deg
-        if const.RENDER_INVERT_Y:
-            # Y-axis inversion flips handedness, so mirror angle for display.
-            draw_angle = -draw_angle
-        draw_angle += const.RENDER_ANGLE_OFFSET_DEG
+    def load_textures(self, texture_files: list[str]) -> None:
+        if texture_files is None or len(texture_files) == 0:
+            raise ValueError("No textures specified for loading.")
 
-        angle_key = int(round(draw_angle)) % 360
-        texture = self._get_or_create_texture(angle_key)
+        for file_name in texture_files:
+            texture_path = self.texture_dir / file_name
+            if not texture_path.is_file():
+                raise ValueError(
+                    f"Texture file {texture_path} does not exist.")
 
-        screen_x = state.x * const.RENDER_POSITION_SCALE + const.RENDER_OFFSET_X
-        screen_y_world = -state.y if const.RENDER_INVERT_Y else state.y
-        screen_y = screen_y_world * const.RENDER_POSITION_SCALE + const.RENDER_OFFSET_Y
+            image = Image.open(texture_path).resize(
+                (const.RENDER_TEXTURE_FACTOR, const.RENDER_TEXTURE_FACTOR),
+                Image.Resampling.NEAREST)
+            texture = Texture(file_name, image, self.canvas)
 
-        self.canvas.coords(self._car_item_id, screen_x, screen_y)
-        self.canvas.itemconfig(self._car_item_id, image=texture)
+            # Debug
+            print(f"Loaded texture: {file_name} with id {len(self.textures)}")
 
-    def _get_or_create_texture(self, angle_key: int) -> ImageTk.PhotoImage:
-        texture = self._car_textures.get(angle_key)
-        if texture is not None:
-            return texture
+            self.textures.append(texture)
 
-        rotated = self._base_car_image.rotate(
-            - angle_key,
-            resample=Image.Resampling.NEAREST,
-            expand=True,
-        )
-        texture = ImageTk.PhotoImage(rotated)
-        self._car_textures[angle_key] = texture
-        return texture
+    def resolve_texture_idx(self, texture_file: str) -> int:
+        for idx, texture in enumerate(self.textures):
+            if texture.name == texture_file:
+                return idx
+        raise ValueError(
+            f"Texture file {texture_file} not found in loaded textures.")
+
+    def render(self, states: list[RenderState]) -> None:
+        for state in states:
+            draw_angle = state.angle_deg
+            if const.RENDER_INVERT_Y:
+                # Y-axis inversion flips handedness, so mirror angle for display.
+                draw_angle = -draw_angle
+
+            draw_angle += const.RENDER_ANGLE_OFFSET_DEG
+
+            angle_key = int(round(draw_angle)) % 360
+
+            screen_x = state.x * const.RENDER_POSITION_SCALE + const.RENDER_OFFSET_X
+            screen_y_world = -state.y if const.RENDER_INVERT_Y else state.y
+            screen_y = screen_y_world * const.RENDER_POSITION_SCALE + const.RENDER_OFFSET_Y
+
+            state_PI = self.textures[state.texture_idx].get_rotated_PI(
+                angle_key)
+            self.canvas.coords(
+                self.textures[state.texture_idx].canvas_id, screen_x, screen_y)
+            self.canvas.itemconfig(
+                self.textures[state.texture_idx].canvas_id, image=state_PI)

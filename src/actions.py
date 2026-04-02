@@ -2,7 +2,7 @@ from typing import Protocol, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .map_reader import MapData
-    from .logic import CarEntity
+    from .logic import CarEntity, Entity
 
 
 class LogicActions(Protocol):
@@ -12,6 +12,7 @@ class LogicActions(Protocol):
     is_running: bool
     map: "MapData | None"
     player: "CarEntity | None"
+    entity_list: list["Entity"] | None
 
 
 class GuiActions(Protocol):
