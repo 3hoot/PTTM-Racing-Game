@@ -6,7 +6,7 @@ import tkinter as tk
 from . import consts as const
 from .actions import LogicActions
 from .input import InputController
-from .menu import MenuView
+from .menu import MenuView, SecondWindow
 from .renderer import GameRenderer, RenderState
 
 
@@ -32,16 +32,23 @@ class Game:
         self.logic: Optional[LogicActions] = None
         self._in_gameplay_view = False
 
-        # Load textures and create renderer
-        project_root = Path(__file__).resolve().parent.parent
-        textures_dir = project_root / "textures"
-        self.renderer = GameRenderer(self.frame, textures_dir)
-        self.renderer.hide()  # Menu will be shown first
-
         # Create menu and input controller
         self.menu = MenuView(self.frame, on_start=self._on_start_game)
         self.input = InputController()
         self.input.bind(self.root)
+
+        # Load textures and create renderer
+        project_root = Path(__file__).resolve().parent.parent
+        textures_dir = project_root / "textures"
+        texture_file = self.menu.selected_texture
+        print("texture_file =", texture_file)
+        self.renderer = GameRenderer(self.frame, textures_dir, texture_file)
+        self.renderer.hide()  # Menu will be shown first
+
+
+    def second_window(self) -> None:
+        self.new_win = tk.Toplevel(self.root)
+        self.second_menu = SecondWindow(self.new_win)
 
     def set_logic(self, logic: LogicActions) -> None:
         self.logic = logic
@@ -64,6 +71,12 @@ class Game:
         if self.logic is None:
             return
         self.logic.start()
+        
+        #what is needed for textures to show 
+        self.renderer.selected_texture = self.menu.selected_texture
+        self.renderer.draw_background()
+        self.menu.hide()
+        self.renderer.show()
 
     def _tick(self) -> None:
         # Ensure at least 1 ms delay
