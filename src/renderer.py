@@ -72,35 +72,6 @@ class GameRenderer:
         self.render_offset_x = 0.0
         self.render_offset_y = float(map_size_y)
 
-    #creating a background texture
-    def draw_background(self) -> None:
-        if self.selected_texture is None:
-            return
-        
-        base_dir = Path(__file__).resolve().parent.parent
-        textures_dir = base_dir.joinpath('textures')
-        background_image = Image.open(textures_dir / self.selected_texture)
-        self.background_tile = ImageTk.PhotoImage(background_image)
-        
-        img_width = 16
-        img_height = 16
-        width=const.GAME_WINDOW_SIZE_X
-        height=const.GAME_WINDOW_SIZE_Y
-        
-        self.canvas.delete("background")
-        
-        for y in range(0, height, img_height):
-            for x in range(0, width, img_width):
-                self.canvas.create_image(
-                    x,
-                    y,
-                    image = self.background_tile,
-                    anchor = "nw",
-                    tags = "background"
-                )
-                
-        self.canvas.tag_lower("background")
-        
 
     def show(self) -> None:
         self.canvas.grid(row=0, column=0, sticky="nsew")
