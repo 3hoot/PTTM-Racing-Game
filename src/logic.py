@@ -23,25 +23,23 @@ class Game:
 
     # --- Game logic ---
 
+    def set_map(self, map_str: str) -> None:
+        maps_dir = Path(__file__).resolve().parent.parent / "maps"
+        self.map = mp.MapReader().read_map(
+            str(maps_dir / map_str), mp.MapFileType.JSON)
+
     def start(self, map_num: int = 1) -> None:
         if self.ui is None:
             raise RuntimeError(
                 "UI is not connected. Call set_ui() before start().")
 
-        # Initialize game state, create car entity, etc.
-        self.is_running: bool = True
-        maps_dir = Path(__file__).resolve().parent.parent / "maps"
-        self.map = mp.MapReader().read_map(
-            str(maps_dir / f"map_{map_num}.json"), mp.MapFileType.JSON)
+        if self.map is None:
+            raise RuntimeError(
+                "Map is not loaded. Call set_map() before start().")
 
         # Start at the center of the starting tile
-        scaled_start_position = Coords(self.map.start_position.x * const.MAP_SCALE_FACTOR +
-                                       0.5 * const.MAP_SCALE_FACTOR,
-                                       self.map.start_position.y * const.MAP_SCALE_FACTOR +
-                                       0.5 * const.MAP_SCALE_FACTOR)
-
-        # for now we'll just start at the world origin until we implement map boundaries and collision
-        scaled_start_position = Coords(0.0, 0.0)
+        scaled_start_position = Coords(self.map.start_position.x + 0.5,
+                                       self.map.start_position.y + 0.5)
 
         self.player = CarEntity(position=scaled_start_position)
 
@@ -66,11 +64,9 @@ class Game:
         if not self.is_running:
             return
 
-        # if self.player is None or self.map is None:
-        #     return
-
-        if self.player is None:
-            return
+        if self.player is None or self.map is None:
+            raise RuntimeError(
+                "Player entity / map is not initialized. Call start() before update().")
 
         # Update game state, physics, etc.
         self.player.update(dt)
@@ -255,7 +251,7 @@ class CarEntity(Entity):
             speed_factor = 1.0 / \
                 (1.0 + const.DEFAULT_UNDERSTEER_GAIN * (self.speed**2))
             self.angular_velocity = (
-                self.velocity.y / self.wheelbase
+                const.DEFAULT_STEERING_CORRECTION_COEFF * self.velocity.y / self.wheelbase
             ) * np.tan(np.radians(self.steer_angle)) * speed_factor
         else:
             self.angular_velocity = 0.0

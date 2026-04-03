@@ -64,9 +64,37 @@ class Game:
 
     def _on_start_game(self) -> None:
         if self.logic is None or self.logic.entity_list is None:
-            return
+            raise RuntimeError(
+                "Game logic is not properly initialized. Ensure set_logic() is called with a valid LogicActions implementation before starting the game."
+            )
+
+        # Logic setup and start
+        self.logic.is_running = True
+        self.logic.set_map("map_1.json")
         self.logic.start()
+
+        if self.logic.map is None:
+            raise RuntimeError(
+                "Game logic did not properly load the map. Ensure that the set_map() method of the LogicActions implementation correctly loads the map and sets the map property."
+            )
+
+        # Renderer setup
+        screen_width = int(self.logic.map.size_x * const.RENDER_POSITION_SCALE)
+        screen_height = int(self.logic.map.size_y *
+                            const.RENDER_POSITION_SCALE)
+
+        # Resize the main window to fit the map size
+        self.root.geometry(f"{screen_width}x{screen_height}")
+        self.frame.config(width=screen_width, height=screen_height)
+
+        # Force tkinter to process the geometry change before loading textures
+        self.root.update_idletasks()
+
         self.renderer.load_textures(["car_1.png"])
+        self.renderer.set_render_size(
+            screen_width,
+            screen_height
+        )
 
         # Assigning textures to entities (here to allow for changing textures before game start)
         # Placeholder binding (entity of idx 0 is the player)
@@ -100,7 +128,9 @@ class Game:
 
     def _render_from_logic(self) -> None:
         if self.logic is None or self.logic.entity_list is None:
-            return
+            raise RuntimeError(
+                "Game logic is not properly initialized. Ensure set_logic() is called with a valid LogicActions implementation before starting the game."
+            )
 
         # Update all positions and angles from logic entities
         for state in self.RenderStates:

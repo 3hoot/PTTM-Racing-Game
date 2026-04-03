@@ -1,9 +1,9 @@
 
 # --- GUI related constants ---
 GAME_TITLE: str = "Pedal To The Metal - Racing Game"
-GAME_GLOBAL_SCALE: float = 0.8
-GAME_WINDOW_SIZE_X: int = int(1600 * GAME_GLOBAL_SCALE)
-GAME_WINDOW_SIZE_Y: int = int(1800 * GAME_GLOBAL_SCALE)
+GAME_GLOBAL_SCALE: float = 1
+GAME_WINDOW_SIZE_X: int = int(800 * GAME_GLOBAL_SCALE)
+GAME_WINDOW_SIZE_Y: int = int(1000 * GAME_GLOBAL_SCALE)
 GAME_TARGET_FPS: int = 60
 
 # Render transform controls (screen-space only)
@@ -18,18 +18,21 @@ RENDER_ANGLE_OFFSET_DEG: float = 0.0
 
 # --- Car physics related constants ---
 DEFAULT_MASS: float = 1500.0                # [kg]
-DEFAULT_WHEELBASE: float = 3             # [m]
-DEFAULT_MASS_DISTRIBUTION: float = 0.5     # 0.3 equals 30% front, 70% rear
-DEFAULT_MASS_HEIGHT: float = 0.5           # [m], height of the center of mass
-DEFAULT_INERTIA: float = 1200.0            # [kg*m^2]
-DEFAULT_TIRE_FRICTION_COEFF: float = 0.9   # mu, value is for dry asphalt
+DEFAULT_WHEELBASE: float = 3                # [m]
+DEFAULT_MASS_DISTRIBUTION: float = 0.5      # 0.3 equals 30% front, 70% rear
+DEFAULT_MASS_HEIGHT: float = 0.5            # [m], height of the center of mass
+DEFAULT_INERTIA: float = 1200.0             # [kg*m^2]
+DEFAULT_TIRE_FRICTION_COEFF: float = 0.9    # mu, value is for dry asphalt
 DEFAULT_CORNERING_STIFFNESS: float = 100.0  # Force per degree of slip
-DEFAULT_ACCEL_FORCE: float = 3500.0        # Engine power
-DEFAULT_BRAKE_FORCE: float = 6000.0        # Braking power
+DEFAULT_ACCEL_FORCE: float = 3500.0         # Engine power
+DEFAULT_BRAKE_FORCE: float = 4500.0         # Braking power
 # [degrees], maximum steer angle at full input
 DEFAULT_MAX_STEER_ANGLE: float = 55.0
 # Higher values make the car understeer more as speed rises.
-DEFAULT_UNDERSTEER_GAIN: float = 0.015
+DEFAULT_UNDERSTEER_GAIN: float = 0.02
+# This coefficient is used to adjust the steering response curve
+# make the car more responsive at low speeds and less twitchy at high speeds. Values >1 increase low-speed steering and reduce high-speed steering.
+DEFAULT_STEERING_CORRECTION_COEFF: float = 1.4
 
 # --- World physics related constants ---
 WORLD_GRAVITY: float = 9.81
@@ -43,4 +46,4 @@ MIN_VELOCITY_THRESHOLD: float = 0.01
 # --- Map format related constants (mainly for gui) ---
 MAP_ROAD_SYMBOL: str = "X"
 MAP_EMPTY_SYMBOL: str = "_"
-MAP_SCALE_FACTOR: float = 16
+MAP_SCALE_FACTOR: float = 3.0

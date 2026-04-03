@@ -44,6 +44,9 @@ class Texture:
 
 class GameRenderer:
     def __init__(self, master: tk.Widget, textures_dir: Path) -> None:
+        self.render_offset_x = const.RENDER_OFFSET_X
+        self.render_offset_y = const.RENDER_OFFSET_Y
+
         self.canvas = tk.Canvas(
             master,
             width=const.GAME_WINDOW_SIZE_X,
@@ -59,6 +62,15 @@ class GameRenderer:
 
         # Cache for loaded textures and their rotated versions
         self.textures: list[Texture] = []
+
+    # Sets the canvas size based on the map size and render scaling factor
+    def set_render_size(self, map_size_x: int, map_size_y: int) -> None:
+        self.canvas.config(
+            width=map_size_x,
+            height=map_size_y,
+        )
+        self.render_offset_x = 0.0
+        self.render_offset_y = float(map_size_y)
 
     def show(self) -> None:
         self.canvas.grid(row=0, column=0, sticky="nsew")
@@ -81,9 +93,6 @@ class GameRenderer:
                 Image.Resampling.NEAREST)
             texture = Texture(file_name, image, self.canvas)
 
-            # Debug
-            print(f"Loaded texture: {file_name} with id {len(self.textures)}")
-
             self.textures.append(texture)
 
     def resolve_texture_idx(self, texture_file: str) -> int:
@@ -94,6 +103,14 @@ class GameRenderer:
             f"Texture file {texture_file} not found in loaded textures.")
 
     def render(self, states: list[RenderState]) -> None:
+        # Debugging
+        # Drawing boxes on the canvas to visualize the coordinate system and scaling
+        self.canvas.create_rectangle(0, 0, 10, 10, fill="red")  # Origin
+        self.canvas.create_rectangle(const.RENDER_POSITION_SCALE, 0,
+                                     const.RENDER_POSITION_SCALE + 10, 10, fill="green")  # 1 unit on x-axis
+        self.canvas.create_rectangle(0, const.RENDER_POSITION_SCALE, 10,
+                                     const.RENDER_POSITION_SCALE + 10, fill="blue")  # 1 unit on y-axis
+
         for state in states:
             draw_angle = state.angle_deg
             if const.RENDER_INVERT_Y:
@@ -104,9 +121,9 @@ class GameRenderer:
 
             angle_key = int(round(draw_angle)) % 360
 
-            screen_x = state.x * const.RENDER_POSITION_SCALE + const.RENDER_OFFSET_X
+            screen_x = state.x * const.RENDER_POSITION_SCALE + self.render_offset_x
             screen_y_world = -state.y if const.RENDER_INVERT_Y else state.y
-            screen_y = screen_y_world * const.RENDER_POSITION_SCALE + const.RENDER_OFFSET_Y
+            screen_y = screen_y_world * const.RENDER_POSITION_SCALE + self.render_offset_y
 
             state_PI = self.textures[state.texture_idx].get_rotated_PI(
                 angle_key)
