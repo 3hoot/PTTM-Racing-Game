@@ -32,19 +32,17 @@ class Game:
         self.logic: Optional[LogicActions] = None
         self._in_gameplay_view = False
 
+        # Load textures and create renderer
+        project_root = Path(__file__).resolve().parent.parent
+        textures_dir = project_root / "textures"
+        self.renderer = GameRenderer(self.frame, textures_dir)
+        self.renderer.hide()  # Menu will be shown first
+
         # Create menu and input controller
         self.menu = MenuView(self.frame, on_start=self._on_start_game)
         self.input = InputController()
         self.input.bind(self.root)
-
-        # Load textures and create renderer
-        project_root = Path(__file__).resolve().parent.parent
-        textures_dir = project_root / "textures"
-        texture_file = self.menu.selected_texture
-        print("texture_file =", texture_file)
-        self.renderer = GameRenderer(self.frame, textures_dir, texture_file)
-        self.renderer.hide()  # Menu will be shown first
-
+        
 
     def second_window(self) -> None:
         self.new_win = tk.Toplevel(self.root)
@@ -64,23 +62,53 @@ class Game:
         self.root.mainloop()
 
     # Method for logic to send status messages to the menu
+    # Currently unused, but can be called from logic to update the menu status label
+    # (e.g. for error messages or game over)
     def status_message(self, message: str) -> None:
         self.menu.set_status(message)
 
     def _on_start_game(self) -> None:
-        if self.logic is None:
-            return
+        if self.logic is None or self.logic.entity_list is None:
+            raise RuntimeError(
+                "Game logic is not properly initialized. Ensure set_logic() is called with a valid LogicActions implementation before starting the game."
+            )
+
+        # Logic setup and start
+        self.logic.is_running = True
+        self.logic.set_map("map_1.json")
         self.logic.start()
-        
-        #what is needed for textures to show 
-        self.renderer.selected_texture = self.menu.selected_texture
-        self.renderer.draw_background()
-        self.menu.hide()
-        self.renderer.show()
+
+        if self.logic.map is None:
+            raise RuntimeError(
+                "Game logic did not properly load the map. Ensure that the set_map() method of the LogicActions implementation correctly loads the map and sets the map property."
+            )
+
+        # Renderer setup
+        screen_width = int(self.logic.map.size_x * const.RENDER_POSITION_SCALE)
+        screen_height = int(self.logic.map.size_y *
+                            const.RENDER_POSITION_SCALE)
+
+        # Resize the main window to fit the map size
+        self.root.geometry(f"{screen_width}x{screen_height}")
+        self.frame.config(width=screen_width, height=screen_height)
+
+        # Force tkinter to process the geometry change before loading textures
+        self.root.update_idletasks()
+
+        self.renderer.load_textures(["car_1.png"])
+        self.renderer.set_render_size(
+            screen_width,
+            screen_height
+        )
+
+        # Assigning textures to entities (here to allow for changing textures before game start)
+        # Placeholder binding (entity of idx 0 is the player)
+        self.RenderStates: list[RenderState] = [
+            RenderState(0.0, 0.0, 0.0, 0, self.renderer.resolve_texture_idx("car_1.png"))]
 
     def _tick(self) -> None:
         # Ensure at least 1 ms delay
-        frame_ms = max(1, int(1000 / const.GAME_FPS))
+        frame_ms = max(1, int(1000 / const.GAME_TARGET_FPS))
 
         dt = frame_ms / 1000.0  # Convert ms to seconds for logic update
 
@@ -104,13 +132,16 @@ class Game:
         self.root.after(frame_ms, self._tick)
 
     def _render_from_logic(self) -> None:
-        if self.logic is None or self.logic.player is None:
-            return
+        if self.logic is None or self.logic.entity_list is None:
+            raise RuntimeError(
+                "Game logic is not properly initialized. Ensure set_logic() is called with a valid LogicActions implementation before starting the game."
+            )
 
-        player = self.logic.player
-        state = RenderState(
-            x=player.position.x,
-            y=player.position.y,
-            angle_deg=player.rotation,
-        )
-        self.renderer.render(state)
+        # Update all positions and angles from logic entities
+        for state in self.RenderStates:
+            logic_entity = self.logic.entity_list[state.entity_idx]
+            state.x = logic_entity.position.x
+            state.y = logic_entity.position.y
+            state.angle_deg = logic_entity.rotation
+
+        self.renderer.render(self.RenderStates)

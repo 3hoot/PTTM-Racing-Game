@@ -4,6 +4,7 @@ import numpy as np
 import json
 
 from .coords import Coords
+from . import consts as const
 
 
 class MapFileType(Enum):
@@ -16,6 +17,8 @@ class MapData:
     traction_map_matrix: np.matrix
     start_position: Coords = field(default_factory=lambda: Coords(0.0, 0.0))
     end_position: Coords = field(default_factory=lambda: Coords(0.0, 0.0))
+    size_x: int = 0
+    size_y: int = 0
 
 
 class MapReader():
@@ -54,7 +57,9 @@ class MapReader():
                     symbolic_map_matrix=symbolic_map_matrix,
                     traction_map_matrix=traction_map_matrix,
                     start_position=start_position,
-                    end_position=end_position
+                    end_position=end_position,
+                    size_x=int(len(data["map"][0]) * const.MAP_SCALE_FACTOR),
+                    size_y=int(len(data["map"]) * const.MAP_SCALE_FACTOR)
                 )
 
         except FileNotFoundError:
