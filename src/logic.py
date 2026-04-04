@@ -3,6 +3,7 @@ from enum import Enum
 import numpy as np
 from pathlib import Path
 import copy
+import time
 
 from . import consts as const
 from . import map_reader as mp
@@ -38,13 +39,33 @@ class Game:
                 "Map is not loaded. Call set_map() before start().")
 
         # Start at the center of the starting tile
-        scaled_start_position = Coords(self.map.start_position.x + 0.5,
-                                       self.map.start_position.y + 0.5)
+        scaled_start_position = Coords((self.map.start_position.x + 0.5) * const.MAP_SCALE_FACTOR,
+                                       (self.map.start_position.y + 0.5) * const.MAP_SCALE_FACTOR)
 
-        self.player = CarEntity(position=scaled_start_position)
+        self.player = CarEntity(
+            position=scaled_start_position, name="player_car")
 
-        # For future expansion to handle multiple entities (cars and tiles)
+        # Load car entity and map tile entities into the entity list for rendering
         self.entity_list: list[Entity] = [self.player]
+
+        # Load each map tile as an entity for rendering purposes
+        for y in range(int(self.map.size_y/const.MAP_SCALE_FACTOR)):
+            for x in range(int(self.map.size_x/const.MAP_SCALE_FACTOR)):
+
+                # Map matrix y index needs to be flipped to match screen coordinates if RENDER_INVERT_Y is True
+                matrix_y = int(self.map.size_y/const.MAP_SCALE_FACTOR) - \
+                    1 - y if const.RENDER_INVERT_Y else y
+
+                tile_symbol = self.map.symbolic_map_matrix[matrix_y, x]
+                tile_entity = Entity(position=Coords(
+                    (x + 0.5)*const.MAP_SCALE_FACTOR,
+                    (y + 0.5)*const.MAP_SCALE_FACTOR),
+                    rotation=0.0,
+                    name=f"tile_{tile_symbol}")
+                self.entity_list.append(tile_entity)
+
+        self.start_time = time.time()
+        self.is_running = True
 
     def input(self, action: str, value: float) -> None:
         if not self.is_running:
@@ -68,34 +89,55 @@ class Game:
             raise RuntimeError(
                 "Player entity / map is not initialized. Call start() before update().")
 
-        # Update game state, physics, etc.
+        # Update physics for the player car
         self.player.update(dt)
 
-        # Debug print for player's position and rotation
+        # Debug print player pos
         print(
-            f"Player position: ({self.player.position.x:.2f}, {self.player.position.y:.2f}), rotation: {self.player.rotation:.2f} degrees")
-        print(
-            f"Player accelerate: {self.player.throttle:.2f}, brake: {self.player.brake:.2f}, steer angle: {self.player.steer_angle:.2f}")
+            f"Player position: ({self.player.position.x:.2f}, {self.player.position.y:.2f}), speed: {self.player.speed:.2f} m/s")
 
-        # for entity in self.entity_list:
-        #     # Determine which tile the car is on and update tire friction accordingly
-        #     tile_x = int(entity.position.x // const.MAP_SCALE_FACTOR)
-        #     tile_y = int(entity.position.y // const.MAP_SCALE_FACTOR)
+        # Bounds checking
+        in_bounds_x: bool = self.player.position.x >= 0 and self.player.position.x < self.map.size_x
+        in_bounds_y: bool = self.player.position.y >= 0 and self.player.position.y < self.map.size_y
 
-        #     # Check for out-of-bounds (off the map) before map indexing
-        #     if tile_x < 0 or tile_x >= self.map.symbolic_map_matrix.shape[1] or tile_y < 0 or tile_y >= self.map.symbolic_map_matrix.shape[0]:
-        #         self.is_running = False
-        #         # self.ui.status_message(
-        #         #     "Game Over! You've gone off the track and fell into a ditch!")
-        #         continue
+        if not in_bounds_x:
+            self.player.position.x = np.clip(
+                self.player.position.x, 0, self.map.size_x)
 
-        #     entity.tire_friction_coeff = self.map.traction_map_matrix[tile_y, tile_x]
+        if not in_bounds_y:
+            self.player.position.y = np.clip(
+                self.player.position.y, 0, self.map.size_y)
 
-        #     # Check for win condition (reaching end tile)
-        #     if (tile_x, tile_y) == (int(self.map.end_position.x), int(self.map.end_position.y)):
-        #         self.is_running = False
-        #         # self.ui.status_message(
-        #         #     "Congratulations! You've reached the finish line!")
+        if not in_bounds_x or not in_bounds_y:
+            self.is_running = False
+            if self.ui is not None:
+                self.ui.status_message(
+                    "Game Over!\nYou've gone off the track and fell into a ditch!")
+
+        # Apply traction from the map based on current position
+        tile_x = int(self.player.position.x / const.MAP_SCALE_FACTOR)
+        tile_y = int(self.player.position.y / const.MAP_SCALE_FACTOR)
+        matrix_y = int(self.map.size_y/const.MAP_SCALE_FACTOR) - \
+            1 - tile_y if const.RENDER_INVERT_Y else tile_y
+
+        if tile_x >= 0 and tile_x < self.map.size_x/const.MAP_SCALE_FACTOR and \
+                matrix_y >= 0 and matrix_y < self.map.size_y/const.MAP_SCALE_FACTOR:
+            traction = self.map.traction_map_matrix[matrix_y, tile_x]
+            self.player.tire_friction_coeff = traction
+        else:
+            # Out of bounds, apply minimal traction to simulate ditch
+            self.player.tire_friction_coeff = 0.1
+
+        # Check for win condition (reaching end position)
+        end_tile_x = int(self.map.end_position.x)
+        end_tile_y = int(self.map.end_position.y)
+
+        if tile_x == end_tile_x and tile_y == end_tile_y:
+            self.is_running = False
+            if self.ui is not None:
+                elapsed_time = time.time() - self.start_time
+                self.ui.status_message(
+                    f"Congratulations! You've reached the finish line in {elapsed_time:.2f} seconds!")
 
 
 class CarType(Enum):
@@ -105,14 +147,16 @@ class CarType(Enum):
 
 
 class Entity:
-    def __init__(self, position: Optional[Coords], rotation: float) -> None:
+    def __init__(self, position: Optional[Coords], rotation: float, name: str) -> None:
         self.position = position if position is not None else Coords(0.0, 0.0)
         self.rotation = rotation
+        self.name = name
 
 
 class CarEntity(Entity):
     def __init__(self, position=Coords(10.0, 10.0),
                  rotation=0.0,
+                 name="car",
                  wheelbase=const.DEFAULT_WHEELBASE,
                  mass_distribution=const.DEFAULT_MASS_DISTRIBUTION,
                  mass_height=const.DEFAULT_MASS_HEIGHT,
@@ -122,7 +166,7 @@ class CarEntity(Entity):
                  cornering_stiffness=const.DEFAULT_CORNERING_STIFFNESS,
                  car_type=CarType.AWD) -> None:
 
-        super().__init__(position, rotation)
+        super().__init__(position, rotation, name)
 
         # Car state
         self.wheelbase = wheelbase
@@ -225,11 +269,15 @@ class CarEntity(Entity):
         drag_force_lat = - const.DEFAULT_AIR_RESISTANCE_COEFF * self.velocity.x * \
             abs(self.velocity.x) - const.DEFAULT_ROLLING_RESISTANCE_COEFF * \
             self.velocity.x * self.mass
+        # Adjust drag based on traction
+        drag_force_lat /= (self.tire_friction_coeff)
         total_force_lat = force_front_lat + force_rear_lat + drag_force_lat
 
         drag_force_long = - const.DEFAULT_AIR_RESISTANCE_COEFF * self.velocity.y * \
             abs(self.velocity.y) - const.DEFAULT_ROLLING_RESISTANCE_COEFF * \
             self.velocity.y * self.mass
+        # Adjust drag based on traction
+        drag_force_long /= (self.tire_friction_coeff)
         total_force_long = force_front_long + force_rear_long + drag_force_long
 
         # --- Integrate Physics ---

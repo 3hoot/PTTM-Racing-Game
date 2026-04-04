@@ -90,16 +90,35 @@ class Game:
         # Force tkinter to process the geometry change before loading textures
         self.root.update_idletasks()
 
-        self.renderer.load_textures(["car_1.png"])
+        self.renderer.load_textures({
+            "car_1.png": 1.0,
+            "grass_1.png": const.MAP_SCALE_FACTOR,
+            "road_1.png": const.MAP_SCALE_FACTOR
+        })
         self.renderer.set_render_size(
             screen_width,
             screen_height
         )
 
         # Assigning textures to entities (here to allow for changing textures before game start)
-        # Placeholder binding (entity of idx 0 is the player)
-        self.RenderStates: list[RenderState] = [
-            RenderState(0.0, 0.0, 0.0, 0, self.renderer.resolve_texture_idx("car_1.png"))]
+        self.RenderStates: list[RenderState] = []
+        for idx, entity in enumerate(self.logic.entity_list):
+            match entity.name:
+                case "player_car":
+                    texture_idx = self.renderer.resolve_texture_idx(
+                        "car_1.png")
+                case _ if entity.name == f"tile_{const.MAP_EMPTY_SYMBOL}":
+                    texture_idx = self.renderer.resolve_texture_idx(
+                        "grass_1.png")
+                case _ if entity.name == f"tile_{const.MAP_ROAD_SYMBOL}":
+                    texture_idx = self.renderer.resolve_texture_idx(
+                        "road_1.png")
+                case _:
+                    raise ValueError(
+                        f"Unknown entity name '{entity.name}' in logic. Ensure that the map and entity definitions use valid names that match the expected textures or add handling for new entity types in the renderer setup.")
+
+            self.RenderStates.append(RenderState(
+                0.0, 0.0, 0.0, entity_idx=idx, texture_idx=texture_idx, name=entity.name))
 
     def _tick(self) -> None:
         # Ensure at least 1 ms delay

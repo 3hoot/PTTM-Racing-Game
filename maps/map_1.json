@@ -3,11 +3,11 @@
 	"width": 5,
 	"height": 9,
 	"tile_friction": {
-		"_": 0.6,
+		"_": 0.05,
 		"X": 0.9
 	},
     "start_position": [2, 0],
-    "end_position": [4, 8],
+    "end_position": [3, 8],
 	"map": [
 		["_", "_", "_", "X", "_"],
 		["_", "X", "X", "X", "_"],

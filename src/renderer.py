@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 import tkinter as tk
@@ -14,17 +14,18 @@ class RenderState:
     angle_deg: float
     entity_idx: int
     texture_idx: int
+    name: str
+    canvas_id: int | None = None
 
 
 class Texture:
     """Represents a texture with cached rotated versions for efficient rendering."""
 
-    def __init__(self, name: str, base_image: Image.Image, canvas: tk.Canvas) -> None:
+    def __init__(self, name: str, base_image: Image.Image) -> None:
         self.name = name
         self.base = base_image
         self.rotated: dict[int, ImageTk.PhotoImage] = {
             0: ImageTk.PhotoImage(base_image)}
-        self.canvas_id = canvas.create_image(0, 0, image=self.rotated[0])
 
     def get_rotated_PI(self, angle_key: int) -> ImageTk.PhotoImage:
         """Get the cached rotated texture for the given angle key, or create it if not cached."""
@@ -70,7 +71,8 @@ class GameRenderer:
             height=map_size_y,
         )
         self.render_offset_x = 0.0
-        self.render_offset_y = float(map_size_y)
+        self.render_offset_y = float(
+            map_size_y) if const.RENDER_INVERT_Y else 0.0
 
     def show(self) -> None:
         self.canvas.grid(row=0, column=0, sticky="nsew")
@@ -78,23 +80,35 @@ class GameRenderer:
     def hide(self) -> None:
         self.canvas.grid_remove()
 
-    def load_textures(self, texture_files: list[str]) -> None:
+    # Load textures based on the provided mapping of texture file names to scaling factors
+    def load_textures(self, texture_files: dict[str, float]) -> None:
         if texture_files is None or len(texture_files) == 0:
             raise ValueError("No textures specified for loading.")
 
-        for file_name in texture_files:
+        for file_name, scale_factor in texture_files.items():
+
+            # Check if the texture is already loaded to avoid duplicates
+            if any(tex.name == file_name for tex in self.textures):
+                continue
+
+            # Load texture image and create Texture object
             texture_path = self.texture_dir / file_name
             if not texture_path.is_file():
                 raise ValueError(
                     f"Texture file {texture_path} does not exist.")
 
             image = Image.open(texture_path).resize(
-                (const.RENDER_TEXTURE_FACTOR, const.RENDER_TEXTURE_FACTOR),
+                (int(const.RENDER_TEXTURE_FACTOR * scale_factor),
+                 int(const.RENDER_TEXTURE_FACTOR * scale_factor)),
                 Image.Resampling.NEAREST)
-            texture = Texture(file_name, image, self.canvas)
+
+            texture = Texture(file_name, image)
 
             self.textures.append(texture)
 
+    # Helper methods
+    # resolve texture and entity indices based on names
+    # for easier mapping from logic to renderer
     def resolve_texture_idx(self, texture_file: str) -> int:
         for idx, texture in enumerate(self.textures):
             if texture.name == texture_file:
@@ -102,14 +116,14 @@ class GameRenderer:
         raise ValueError(
             f"Texture file {texture_file} not found in loaded textures.")
 
+    def resolve_entity_idx(self, entity_name: str, entity_list: list) -> int:
+        for idx, entity in enumerate(entity_list):
+            if hasattr(entity, "name") and entity.name == entity_name:
+                return idx
+        raise ValueError(
+            f"Entity with name {entity_name} not found in entity list.")
+
     def render(self, states: list[RenderState]) -> None:
-        # Debugging
-        # Drawing boxes on the canvas to visualize the coordinate system and scaling
-        self.canvas.create_rectangle(0, 0, 10, 10, fill="red")  # Origin
-        self.canvas.create_rectangle(const.RENDER_POSITION_SCALE, 0,
-                                     const.RENDER_POSITION_SCALE + 10, 10, fill="green")  # 1 unit on x-axis
-        self.canvas.create_rectangle(0, const.RENDER_POSITION_SCALE, 10,
-                                     const.RENDER_POSITION_SCALE + 10, fill="blue")  # 1 unit on y-axis
 
         for state in states:
             draw_angle = state.angle_deg
@@ -127,7 +141,23 @@ class GameRenderer:
 
             state_PI = self.textures[state.texture_idx].get_rotated_PI(
                 angle_key)
-            self.canvas.coords(
-                self.textures[state.texture_idx].canvas_id, screen_x, screen_y)
-            self.canvas.itemconfig(
-                self.textures[state.texture_idx].canvas_id, image=state_PI)
+
+            # If the canvas item doesn't exist yet, create it.
+            # Otherwise, just update its position and image.
+            if state.canvas_id is None:
+                state.canvas_id = self.canvas.create_image(
+                    screen_x,
+                    screen_y,
+                    image=state_PI,
+                )
+            else:
+                self.canvas.coords(state.canvas_id, screen_x, screen_y)
+                self.canvas.itemconfig(state.canvas_id, image=state_PI)
+
+            # Special state handling
+            match state.name:
+                case "player_car":
+                    # Raise player car above other entities
+                    # to ensure it's visible on top of the map tiles.
+                    if state.canvas_id is not None:
+                        self.canvas.tag_raise(state.canvas_id)
