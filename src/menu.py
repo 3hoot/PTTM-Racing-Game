@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import ttk
 from typing import Callable
 from pathlib import Path
 
@@ -11,7 +12,10 @@ class MenuView:
         self.frame = tk.Frame(master, width=300, height=220)
         self.frame.grid(row=0, column=0)
         self.selected_texture = None
-
+        
+        base_dir = Path(__file__).resolve().parent.parent
+        textures_dir = base_dir.joinpath('textures')
+        
         self.title_label = tk.Label(
             self.frame,
             text=const.GAME_TITLE,
@@ -31,23 +35,55 @@ class MenuView:
         self.status_label = tk.Label(self.frame, text="", wraplength=260)
         self.status_label.grid(row=2, column=0, padx=12, pady=(8, 12))
 
+        self.exit_button = tk.Button(
+            self.frame,
+            text="Exit",
+            command=self.close_game,
+            activebackground="red",
+            width=16,
+        )
+        self.exit_button.grid(row=2, column=0, padx=12, pady=(8, 50))
+
         self.choice_of_texture_button = tk.Button(
             self.frame,
-            text="Change texture",
+            text="Change background",
             command= self.open_second_window,
             width=20,
         )
-        self.choice_of_texture_button.grid(row=3, column=0,padx=12, pady=(8, 16))
+        self.choice_of_texture_button.grid(row=4, column=0,padx=12, pady=(8, 16))
+
     
-        self.choice_of_car_button = tk.Button(
+        self.selected_car = "car_1.png"
+        self.car_img = tk.PhotoImage(file=textures_dir.joinpath(self.selected_car))
+        self.car_img = self.car_img.zoom(3, 3)
+        self.car_img_label = tk.Label(self.frame, image=self.car_img)
+        self.car_img_label.grid(row=6, column=0, padx=12, pady=(8, 8))
+        
+        self.choice_of_car_combobox = ttk.Combobox(
             self.frame,
-            text="Change car",
+            values = ["car_1.png", "car_2.png", "car_3.png", "car_4.png"],
+            state = "readonly",
             width=16,
         )
-        self.choice_of_car_button.grid(row=4, column=0,padx=12, pady=(8, 16))
-    
+        self.choice_of_car_combobox.grid(row=5, column=0,padx=12, pady=(8, 16))
+        self.choice_of_car_combobox.set(self.selected_car)
+        self.choice_of_car_combobox.bind("<<ComboboxSelected>>", self.change_car_img)
+        
+    def change_car_img(self, event=None) -> None:
+        base_dir = Path(__file__).resolve().parent.parent
+        textures_dir = base_dir.joinpath('textures')
+        
+        self.selected_car = self.choice_of_car_combobox.get()
+        self.car_img = tk.PhotoImage(file=textures_dir.joinpath(self.selected_car))
+        self.car_img = self.car_img.zoom(3, 3)
+        self.car_img_label.configure(image=self.car_img)
+        self.set_status(f"Selected car: {self.selected_car}")
+        
     def show(self) -> None:
         self.frame.grid()
+        
+    def close_game(self) -> None:
+        self.master.winfo_toplevel().destroy()
 
     def hide(self) -> None:
         self.frame.grid_remove()
@@ -68,7 +104,7 @@ class SecondWindow:
         self.menu = menu
         self.window = tk.Toplevel(master)
         self.window.title("Choose texture")
-        self.window.geometry("400x200")
+        self.window.geometry("380x300")
         self.frame = tk.Frame(self.window)
         self.frame.grid(row=0, column=0)
 
@@ -84,27 +120,16 @@ class SecondWindow:
         )
         self.title_label.grid(row=0, column=1, padx=12, pady=(16, 10))
 
-        self.button1 = tk.Button(
-            self.frame,
-            text="Road 1",
-            width=10,
-            command= lambda: self.choose_texture("road_1.png"),
-        )
-        self.button1.grid(row=1, column=0, padx=4, pady=(4,4))
-        
-        self.img1 = tk.PhotoImage(file= textures_dir.joinpath('road_1.png'))
-        self.img1_label = tk.Label(self.frame, image=self.img1)
-        self.img1_label.grid(row=2, column=0, padx=4, pady=(4,4))
-
         self.button2 = tk.Button(
             self.frame,
-            text="Road 2",
+            text="Road",
             width=10,
             command= lambda: self.choose_texture("road_2.png"),
         )
         self.button2.grid(row=1, column=1, padx=4, pady=(4, 4))
 
         self.img2 = tk.PhotoImage(file=textures_dir.joinpath('road_2.png'))
+        self.img2 = self.img2.zoom(3, 3)
         self.img2_label = tk.Label(self.frame, image=self.img2)
         self.img2_label.grid(row=2, column=1, padx=4, pady=(4,4))
         
@@ -117,22 +142,9 @@ class SecondWindow:
         self.button3.grid(row=1, column=2, padx=4, pady=(4, 4))
         
         self.img3 = tk.PhotoImage(file= textures_dir.joinpath('sand_1.png'))
+        self.img3 = self.img3.zoom(3, 3)
         self.img3_label = tk.Label(self.frame, image=self.img3)
         self.img3_label.grid(row=2, column=2, padx=4, pady=(4,4))
-
-
-        self.button4 = tk.Button(
-            self.frame,
-            text="Grass 1",
-            width=10,
-            command= lambda: self.choose_texture("grass_1.png"),
-        )
-        self.button4.grid(row=3, column=0, padx=4, pady=(4, 4))
-        
-        self.img4 = tk.PhotoImage(file= textures_dir.joinpath('grass_1.png'))
-        self.img4_label = tk.Label(self.frame, image=self.img4)
-        self.img4_label.grid(row=4, column=0, padx=4, pady=(4,4))
-
         
         self.button5 = tk.Button(
             self.frame,
@@ -143,18 +155,20 @@ class SecondWindow:
         self.button5.grid(row=3, column=1, padx=4, pady=(4, 4))
         
         self.img5 = tk.PhotoImage(file= textures_dir.joinpath('grass_2.png'))
+        self.img5 = self.img5.zoom(3, 3)
         self.img5_label = tk.Label(self.frame, image=self.img5)
         self.img5_label.grid(row=4, column=1, padx=4, pady=(4,4))
 
         self.button6 = tk.Button(
             self.frame,
-            text="Grass 3",
+            text="Flowers",
             width=10,
             command= lambda: self.choose_texture("grass_3.png"),
         )
         self.button6.grid(row=3, column=2, padx=4, pady=(4, 4))
         
         self.img6 = tk.PhotoImage(file= textures_dir.joinpath('grass_3.png'))
+        self.img6 = self.img6.zoom(3, 3)
         self.img6_label = tk.Label(self.frame, image=self.img6)
         self.img6_label.grid(row=4, column=2, padx=4, pady=(4,4))
 

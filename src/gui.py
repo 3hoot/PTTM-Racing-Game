@@ -95,10 +95,28 @@ class Game:
         # Force tkinter to process the geometry change before loading textures
         self.root.update_idletasks()
 
+        #if set.menu.texture is None:
+        #        car = "car_1.png"
+        #elif set.menu.texture == "car_2.png":
+        #    car = "car_2.png"
+        
+        car = self.menu.selected_car
+        background = "grass_1.png"
+        road = "road_1.png"
+        
+        if self.menu.selected_texture == "grass_2.png":
+            background = "grass_2.png"
+        elif self.menu.selected_texture == "grass_3.png":
+            background = "grass_3.png"
+        elif self.menu.selected_texture == "sand_1.png":
+            background = "sand_1.png"
+        elif self.menu.selected_texture == "road_2.png":
+            background = "road_2.png"
+            
         self.renderer.load_textures({
-            "car_1.png": 1.0,
-            "grass_1.png": const.MAP_SCALE_FACTOR,
-            "road_1.png": const.MAP_SCALE_FACTOR
+            car: 1.0,
+            background: const.MAP_SCALE_FACTOR,
+            road: const.MAP_SCALE_FACTOR
         })
         self.renderer.set_render_size(
             screen_width,
@@ -111,13 +129,13 @@ class Game:
             match entity.name:
                 case "player_car":
                     texture_idx = self.renderer.resolve_texture_idx(
-                        "car_1.png")
+                        car)
                 case _ if entity.name == f"tile_{const.MAP_EMPTY_SYMBOL}":
                     texture_idx = self.renderer.resolve_texture_idx(
-                        "grass_1.png")
+                        background)
                 case _ if entity.name == f"tile_{const.MAP_ROAD_SYMBOL}":
                     texture_idx = self.renderer.resolve_texture_idx(
-                        "road_1.png")
+                        road)
                 case _:
                     raise ValueError(
                         f"Unknown entity name '{entity.name}' in logic. Ensure that the map and entity definitions use valid names that match the expected textures or add handling for new entity types in the renderer setup.")
