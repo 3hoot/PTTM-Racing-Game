@@ -1,5 +1,8 @@
-# Virtual environment directories
+# Virtual environment directories and Python cache files
 venv/
 env/    
-
 __pycache__/
+
+# Latex auxiliary files
+*.synctex.gz
+*.aux
