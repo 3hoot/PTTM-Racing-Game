@@ -30,10 +30,10 @@ class MenuView:
             activebackground="blue",
             width=16,
         )
-        self.start_button.grid(row=1, column=0, padx=12, pady=(8, 8))
+        self.start_button.grid(row=2, column=0, padx=12, pady=(8, 16))
 
         self.status_label = tk.Label(self.frame, text="", wraplength=260)
-        self.status_label.grid(row=2, column=0, padx=12, pady=(8, 12))
+        self.status_label.grid(row=1, column=0, padx=12, pady=(8, 50))
 
         self.exit_button = tk.Button(
             self.frame,
@@ -42,7 +42,7 @@ class MenuView:
             activebackground="red",
             width=16,
         )
-        self.exit_button.grid(row=2, column=0, padx=12, pady=(8, 50))
+        self.exit_button.grid(row=3, column=0, padx=12, pady=(8, 16))
 
         self.choice_of_texture_button = tk.Button(
             self.frame,
@@ -104,9 +104,8 @@ class SecondWindow:
         self.menu = menu
         self.window = tk.Toplevel(master)
         self.window.title("Choose texture")
-        self.window.geometry("380x300")
         self.frame = tk.Frame(self.window)
-        self.frame.grid(row=0, column=0)
+        self.frame.grid(row=0, column=0, padx=20, pady=20)
 
         #path to the photos
         base_dir = Path(__file__).resolve().parent.parent
@@ -118,7 +117,7 @@ class SecondWindow:
             anchor='center',
             font=("Arial", 16),
         )
-        self.title_label.grid(row=0, column=1, padx=12, pady=(16, 10))
+        self.title_label.grid(row=0, column=1, columnspan=2, padx=12, pady=(16, 10))
 
         self.button2 = tk.Button(
             self.frame,
@@ -171,6 +170,22 @@ class SecondWindow:
         self.img6 = self.img6.zoom(3, 3)
         self.img6_label = tk.Label(self.frame, image=self.img6)
         self.img6_label.grid(row=4, column=2, padx=4, pady=(4,4))
+        
+        self.button7 = tk.Button(
+            self.frame,
+            text="Grass 1",
+            width=10,
+            command= lambda: self.choose_texture("grass_1.png"),
+        )
+        self.button7.grid(row=5, column=1, columnspan=2, padx=4, pady=(4, 4))
+        
+        self.img7 = tk.PhotoImage(file= textures_dir.joinpath('grass_1.png'))
+        self.img7 = self.img7.zoom(3, 3)
+        self.img7_label = tk.Label(self.frame, image=self.img7)
+        self.img7_label.grid(row=6, column=1, columnspan=2, padx=4, pady=(4,4))
+        
+        self.window.update_idletasks()
+        self.window.minsize(self.window.winfo_width(), self.window.winfo_height())
 
         
     def show(self) -> None:

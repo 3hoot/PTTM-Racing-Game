@@ -94,11 +94,6 @@ class Game:
 
         # Force tkinter to process the geometry change before loading textures
         self.root.update_idletasks()
-
-        #if set.menu.texture is None:
-        #        car = "car_1.png"
-        #elif set.menu.texture == "car_2.png":
-        #    car = "car_2.png"
         
         car = self.menu.selected_car
         background = "grass_1.png"
