@@ -93,8 +93,8 @@ class Game:
         self.player.update(dt)
 
         # Debug print player pos
-        print(
-            f"Player position: ({self.player.position.x:.2f}, {self.player.position.y:.2f}), speed: {self.player.speed:.2f} m/s")
+        # print(
+        #     f"Player position: ({self.player.position.x:.2f}, {self.player.position.y:.2f}), speed: {self.player.speed:.2f} m/s")
 
         # Bounds checking
         in_bounds_x: bool = self.player.position.x >= 0 and self.player.position.x < self.map.size_x
