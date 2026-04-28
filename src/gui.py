@@ -42,7 +42,6 @@ class Game:
         self.menu = MenuView(self.frame, on_start=self._on_start_game)
         self.input = InputController()
         self.input.bind(self.root)
-        
 
     def second_window(self) -> None:
         self.new_win = tk.Toplevel(self.root)
@@ -73,9 +72,12 @@ class Game:
                 "Game logic is not properly initialized. Ensure set_logic() is called with a valid LogicActions implementation before starting the game."
             )
 
+        if self.menu.selected_map is None:
+            self.menu.selected_map = "map_1.json"  # Default map if none selected
+
         # Logic setup and start
         self.logic.is_running = True
-        self.logic.set_map("map_1.json")
+        self.logic.set_map(self.menu.selected_map)
         self.logic.start()
 
         if self.logic.map is None:
@@ -94,11 +96,11 @@ class Game:
 
         # Force tkinter to process the geometry change before loading textures
         self.root.update_idletasks()
-        
+
         car = self.menu.selected_car
         background = "grass_1.png"
         road = "road_1.png"
-        
+
         if self.menu.selected_texture == "grass_2.png":
             background = "grass_2.png"
         elif self.menu.selected_texture == "grass_3.png":
@@ -107,7 +109,7 @@ class Game:
             background = "sand_1.png"
         elif self.menu.selected_texture == "road_2.png":
             background = "road_2.png"
-            
+
         self.renderer.load_textures({
             car: 1.0,
             background: const.MAP_SCALE_FACTOR,
