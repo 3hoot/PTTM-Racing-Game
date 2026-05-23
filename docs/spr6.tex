@@ -1,0 +1,133 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english, polish]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{parskip}
+\usepackage{hyperref}
+% Hide the link borders
+\hypersetup{hidelinks}
+\usepackage{geometry}
+% Margins for A4 paper
+\geometry{a4paper, margin=2cm}
+\usepackage{enumitem}
+% Spacing for itemize lists
+\setlist[itemize]{itemsep=1em, topsep=0.25em, parsep=0pt, partopsep=0pt}
+\setlength{\parindent}{0pt} % No paragraph indentation
+\setlength{\emergencystretch}{2em} % Prevent overfull hboxes
+
+\title{Sprawozdanie z zadania 6\\\textbf{Rozszerzenie gry wyścigowej}}
+\author{Mikołaj Kuryło s193743\\Antonina Włodarczyk s197793}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{1cm}
+
+\section{Sformułowanie zadania i przyjęte założenia}
+Celem projektu było rozbudowanie świata gry poprzez dodanie możliwości zmiany generowanych map.
+Mapy te umożliwiają ciekawszą rozgrywkę i dzięki uwzględnieniu
+
+\section{Opis modelu map}
+Mapy zostają dodane w programie dzięki plikom o rozszerzeniu json.
+Jest to możliwe, dzięki pliku map\_reader, który służy jako translator. 
+
+\subsection{Przykładowy kod jednej z map}
+\begin{verbatim}
+   {
+  "name": "map_3",
+  "width": 5,
+  "height": 9,
+  "tile_friction": {
+    "_": 0.05,
+    "X": 0.9
+  },
+  "start_position": [4, 1],
+  "end_position": [4, 8],
+  "map": [
+    ["_", "X", "X", "X", "X"],
+    ["X", "X", "_", "X", "X"],
+    ["X", "X", "_", "_", "_"],
+    ["X", "X", "X", "X", "_"],
+    ["_", "_", "_", "X", "_"],
+    ["_", "X", "X", "X", "_"],
+    ["_", "X", "_", "_", "_"],
+    ["_", "X", "X", "X", "X"],
+    ["_", "_", "_", "_", "_"]
+  ]
+}
+
+\end{verbatim}
+Mapy z tej postaci są czytane głównie dzięki kodu odpowiedzialnemu za konwersję.
+\begin{verbatim}
+class MapReader():
+    def read_map(self, file_path: str,
+                 file_type: MapFileType) -> MapData:
+
+        match file_type:
+            case MapFileType.JSON:
+                return self._read_json_map(file_path)
+            case _:
+                raise ValueError(f"Unsupported map file type: {file_type}")
+
+    def _read_json_map(self, file_path: str) -> MapData:
+        try:
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+
+                # Store symbolic map as-is
+                symbolic_map_matrix = np.matrix(data["map"], dtype=object)
+
+                # Create traction map by replacing symbols with friction coefficients
+                tile_friction = data["tile_friction"]
+                traction_grid = [
+                    [tile_friction[symbol] for symbol in row]
+                    for row in data["map"]
+                ]
+                traction_map_matrix = np.matrix(traction_grid, dtype=float)
+
+                # Extract start and end positions
+                start_position = Coords(
+                    data["start_position"][0], data["start_position"][1])
+                end_position = Coords(
+                    data["end_position"][0], data["end_position"][1])
+
+                return MapData(
+                    symbolic_map_matrix=symbolic_map_matrix,
+                    traction_map_matrix=traction_map_matrix,
+                    start_position=start_position,
+                    end_position=end_position,
+                    size_x=int(len(data["map"][0]) * const.MAP_SCALE_FACTOR),
+                    size_y=int(len(data["map"]) * const.MAP_SCALE_FACTOR)
+                )
+
+        except FileNotFoundError:
+            print(f"Error: Map file '{file_path}' not found.")
+            raise
+        except KeyError as e:
+            print(f"Error: Missing key in map file: {e}")
+            raise
+        except json.JSONDecodeError:
+            print(f"Error: Map file '{file_path}' is not valid JSON.")
+            raise
+        except Exception as e:
+            print(
+                f"Error: Unexpected error reading map file '{file_path}': {e}")
+            raise
+
+\end{verbatim}
+
+\section{Dyskusja osiągniętych wyników}
+\subsection{Zalety}
+Wykorzystywanie pliku map\_reader znacznie ułatwia i uproszcza dodawanie rozbudowanych oraz znacznie dłuższych tras.
+Jest to prosty proces, który nie wymaga wielu modyfikacji.
+
+\subsection{Ograniczenia i potencjalne ulepszenia}
+Mapy nadal pozostają nieruchome, oraz nie zawsze jest poprowadzona droga, która wskazuje najszybszą trasę. W niektórych przypadkach może to wprowadzać gracza w zdziwienie, ponieważ cel nie zawsze jest okreslony. W przypadku gdzie trasa znajduje sie w centrum planszy, a na zewnątrz znajdują się elementy tła, to cel może być gdziekolwiek.
+Nie ułatwia to gry, a wyjechanie w nieodpowiednim miejsu może skutkowac zakończeniem gry z powodu wypadnięcia za mapę.
+
+\end{document}
